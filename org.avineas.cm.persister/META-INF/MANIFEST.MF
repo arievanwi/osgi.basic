@@ -1,0 +1,12 @@
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: Configuration manager property file reader
+Bundle-SymbolicName: org.avineas.cm.persister
+Bundle-Description: Persister for bean properties into property files
+Bundle-Version: 2.0.1
+Bundle-Vendor: aVineas IT Consulting
+Bundle-Activator: org.avineas.cm.persister.Activator
+Import-Package: org.osgi.framework;version="1.3.0",
+ org.osgi.service.cm;version="1.2.0",
+ org.osgi.util.tracker;version="1.3.0"
+Bundle-RequiredExecutionEnvironment: JavaSE-1.6
