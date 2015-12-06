@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<project default="runner" name="Create runner">
+    <target name="runner">
+        <jar destfile="Runner.jar">
+            <manifest>
+                <attribute name="Main-Class" value="framework.runner.Runner"/>
+            </manifest>
+            <fileset dir="./bin"/>
+        </jar>
+    </target>
+</project>
