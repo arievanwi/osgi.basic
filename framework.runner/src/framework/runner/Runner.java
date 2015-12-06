@@ -33,12 +33,12 @@ import org.osgi.framework.wiring.FrameworkWiring;
  * Runner for an OSGi framework. Conforms to the standard framework API and as such is independent of the OSGi framework
  * used. Is a main method that can be called with the following parameters:
  * <ul>
- * <li>-d directory. The directory to scan for .jar files. All jar files in or below this directory are automatically handled
+ * <li>-d directory. The directory to scan for .jar/.bar files. All jar/bar files in or below this directory are automatically handled
  * as bundles.</li>
  * <li>-p property. An OSGi property that is set to the framework. Properties take the format key=value, like "org.osgi.framework.bootdelegation=*".
  * </li>
  * </ul>
- * Multiple combinations of -d and -p values can be combined.
+ * Multiple variants of -d and -p values can be combined.
  */
 public class Runner {
 	private Framework framework;
