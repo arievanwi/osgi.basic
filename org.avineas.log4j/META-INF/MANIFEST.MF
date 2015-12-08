@@ -4,7 +4,7 @@ Bundle-Name: Log4j
 Bundle-Description: Log4j bundle that allows dynamic re-loading of the log4j configuration
 Bundle-Vendor: aVineas IT Consulting
 Bundle-SymbolicName: org.avineas.log4j
-Bundle-Version: 1.0.1
+Bundle-Version: 1.0.2
 Bundle-Activator: org.avineas.log4j.Activator
 Import-Package: org.osgi.framework;version="1.3.0",
  org.osgi.service.cm
