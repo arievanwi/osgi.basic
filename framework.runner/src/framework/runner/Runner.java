@@ -17,14 +17,17 @@ package framework.runner;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.ServiceLoader;
+import java.util.regex.Pattern;
 
 import org.osgi.framework.Bundle;
 import org.osgi.framework.BundleContext;
+import org.osgi.framework.FrameworkEvent;
 import org.osgi.framework.launch.Framework;
 import org.osgi.framework.launch.FrameworkFactory;
 import org.osgi.framework.wiring.FrameworkWiring;
@@ -47,19 +50,46 @@ public class Runner {
 		this.framework = fw;
 	} 
 	
+	private static void refresh(Framework framework, Collection<Bundle> bundles) {
+		FrameworkWiring wiring = framework.adapt(FrameworkWiring.class);
+		wiring.refreshBundles(bundles);
+	}
+	
 	/**
 	 * Wait for termination. This is either done by a kill-like command or otherwise interrupting the handling. As such
 	 * a shutdown hook is installed to make sure that any clean-up is done.
 	 */
-	private void waitForTermination() {
+	private void waitForTermination(Map<File, Bundle> bundles, int verbose, long checkTime) {
 		Runtime.getRuntime().addShutdownHook(new Thread(new Runnable() {
 			@Override
 			public void run() {
 				handleTermination();
 			}
 		}));
-		try {	
-			framework.waitForStop(0L);
+		long now = System.currentTimeMillis();
+		try {
+			for (;;) {
+				FrameworkEvent event = framework.waitForStop(checkTime);
+				if (event.getType() != FrameworkEvent.WAIT_TIMEDOUT) break;
+				// Check the bundles.
+				List<Bundle> updated = new ArrayList<>();
+				long lastUpdate = System.currentTimeMillis();
+				for (Map.Entry<File, Bundle> entry : bundles.entrySet()) {
+					File f = entry.getKey();
+					if (f.lastModified() > now) {
+						Bundle b = entry.getValue();
+						b.update();
+						if (verbose > 0) {
+							System.out.println("Bundle: " + b + " updated");
+						}
+						updated.add(b);
+					}
+				}
+				if (updated.size() > 0) {
+					refresh(framework, updated);
+					now = lastUpdate;
+				}
+			}
 		} catch (Exception exc) {
 			exc.printStackTrace();
 		}
@@ -80,16 +110,19 @@ public class Runner {
 	 * 
 	 * @param dir The directory to parse (recursive). Doesn't need to exist.
 	 * @param files The list where the files are collected
+	 * @param recursive Indication whether to perform the update recursive
 	 */
-	private static void parseFiles(File dir, List<File> files) {
+	private static void parseFiles(File dir, List<File> files, String match, boolean recursive) {
 		if (dir.exists() && dir.isDirectory() && dir.canRead()) {
 			File[] contents = dir.listFiles();
 			if (contents == null) return;
 			for (File f : contents) {
 				if (f.isDirectory()) {
-					parseFiles(f, files);
+					if (recursive) {
+						parseFiles(f, files, match, true);
+					}
 				}
-				else if (f.getName().endsWith(".jar") || f.getName().endsWith(".bar")) {
+				else if (Pattern.matches(match, f.getAbsolutePath())) {
 					files.add(f);
 				}
 			}
@@ -112,6 +145,7 @@ public class Runner {
 		int cnt = 0;
 		List<File> files = new ArrayList<>();
 		int verbose = 0;
+		long checkTime = 0L;
 		while (cnt < args.length) {
 			// Options: -p means add properties from next argument
 			if ("-p".equals(args[cnt])) {
@@ -119,11 +153,22 @@ public class Runner {
 				String[] values = value.split("=");
 				props.put(values[0].trim(), (values.length == 1 || values[1] == null) ? "" : values[1].trim());
 			}
-			else if ("-d".equals(args[cnt])) {
-				parseFiles(new File(args[++cnt]), files);
+			else if ("-d".equals(args[cnt]) || "-r".equals(args[cnt])) {
+				// Check the directory.
+				boolean recursive = args[cnt].contains("r");
+				String dir = args[++cnt];
+				String match = ".*\\.[bj]ar$";
+				if (args.length > cnt + 1 && !args[cnt + 1].startsWith("-")) {
+					match = args[++cnt];
+				}
+				parseFiles(new File(dir), files, match, recursive);
 			}
 			else if ("-v".equals(args[cnt])) {
 				verbose++;
+				cnt++;
+			}
+			else if ("-w".equals(args[cnt])) {
+				checkTime = Long.parseLong(args[++cnt]) * 1000;
 				cnt++;
 			}
 			else {
@@ -141,27 +186,32 @@ public class Runner {
 		framework.start();
 		BundleContext context = framework.getBundleContext();
 		// Install the bundles.
-		List<Bundle> bundles = new ArrayList<>();
+		Map<File, Bundle> bundles = new LinkedHashMap<>();
 		for (File file : unique.values()) {
-			Bundle b = context.installBundle("file:" + file.getAbsolutePath());
-			if (b.getSymbolicName() == null) {
-				if (verbose > 1) {
-					System.out.println(file + " is not a bundle. Removing bundle id: " + b.getBundleId());
+			try {
+				Bundle b = context.installBundle("file:" + file.getAbsolutePath());
+				if (b.getSymbolicName() == null) {
+					if (verbose > 1) {
+						System.out.println(file + " is not a bundle. Removing bundle id: " + b.getBundleId());
+					}
+					b.uninstall();
 				}
-				b.uninstall();
-			}
-			else {
-				if (verbose > 1) {
-					System.out.println("File: " + file.getName() + ". Bundle: " + b.getSymbolicName() + ", version: " + 
-							b.getVersion() + " installed. Bundle id: " + b.getBundleId());
+				else {
+					if (verbose > 1) {
+						System.out.println("File: " + file.getName() + ". Bundle: " + b.getSymbolicName() + ", version: " + 
+								b.getVersion() + " installed. Bundle id: " + b.getBundleId());
+					}
+					bundles.put(file, b);
 				}
-				bundles.add(b);
+			} catch (Exception exc) {
+				if (verbose > 0) {
+					System.out.println("File: " + file + " could not be installed. Reason: " + exc.getMessage());
+				}
 			}
 		}
 		// Resolve them.
-		FrameworkWiring wiring = framework.adapt(FrameworkWiring.class);
-		wiring.refreshBundles(bundles);
-		for (Bundle b : bundles) {
+		refresh(framework, bundles.values());
+		for (Bundle b : bundles.values()) {
 			if (b.getHeaders().get("Fragment-Host") == null) {
 				if (verbose > 2) {
 					System.out.println("Starting bundle: " + b);
@@ -172,6 +222,6 @@ public class Runner {
 				}
 			}
 		}
-		new Runner(framework).waitForTermination();
+		new Runner(framework).waitForTermination(bundles, verbose, checkTime);
 	}
 }
