@@ -32,7 +32,7 @@ import org.osgi.service.cm.ManagedService;
  * Bundle activator for this log4j bundle. The activator listens for
  * configuration changes and when an update is received, re-configures
  * log4j with the new configuration.
- * 
+ *
  * @author Arie van Wijngaarden
  */
 public class Activator implements BundleActivator, ManagedService {
@@ -40,16 +40,20 @@ public class Activator implements BundleActivator, ManagedService {
     private static final String FILE = "file";
     private Dictionary<String, String> properties;
     private ServiceRegistration<?> registration;
-    
+
 	@Override
 	public void start(BundleContext context) {
 	    properties = new Hashtable<String, String>();
 	    properties.put(Constants.SERVICE_PID, PID);
-	    properties.put(FILE, "configuration/log4j.xml");
-	    registration = context.registerService(ManagedService.class.getName(), 
+	    String path = context.getProperty(PID);
+	    if (path == null) {
+	        path = "configuration/log4j.xml";
+	    }
+	    properties.put(FILE, path);
+	    registration = context.registerService(ManagedService.class.getName(),
 	        this, properties);
 	}
-	
+
     @SuppressWarnings("unchecked")
     @Override
     public synchronized void updated(@SuppressWarnings("rawtypes") Dictionary args) {
