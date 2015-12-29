@@ -1,7 +1,7 @@
 /*
  * Copyright 2009-2010, FUJIFILM Manufacturing Europe B.V.
  * Copyright 2009-2014, aVineas IT Consulting
- * 
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -33,7 +33,7 @@ import org.osgi.util.tracker.ServiceTrackerCustomizer;
 /**
  * Activator for this bundle. Takes care of creating a new file handlers and
  * handling the properties related to it.
- * 
+ *
  * @author Arie van Wijngaarden
  */
 public class Activator implements BundleActivator {
@@ -44,8 +44,9 @@ public class Activator implements BundleActivator {
     @Override
     public void start(final BundleContext context) {
         String dir = context.getProperty(LOCPROPERTY);
-        if (dir == null)
+        if (dir == null) {
             return;
+        }
         Map<String, PropertyFileHandler> persisters = new HashMap<String, PropertyFileHandler>();
         File file = new File(dir);
         if (!file.isDirectory()) {
@@ -54,11 +55,13 @@ public class Activator implements BundleActivator {
             }
         } else {
             for (File entry : file.listFiles()) {
-                if (entry.isDirectory())
+                if (entry.isDirectory()) {
                     continue;
-                if (PropertyFileHandler.filter().accept(entry))
+                }
+                if (PropertyFileHandler.filter().accept(entry)) {
                     persisters.put(entry.toString(), new PropertyFileHandler(
                             entry));
+                }
             }
         }
         // We got them all.
@@ -73,12 +76,12 @@ public class Activator implements BundleActivator {
                     context.ungetService(ref);
                     update(null, backers);
                 }
-    
+
                 @Override
                 public void modifiedService(ServiceReference<Object> ref,
                         Object admin) {
                 }
-    
+
                 @Override
                 public Object addingService(ServiceReference<Object> ref) {
                     Object obj = context.getService(ref);
@@ -110,7 +113,11 @@ public class Activator implements BundleActivator {
 
     @Override
     public void stop(BundleContext context) {
-        timer.cancel();
-        tracker.close();
+        if (timer != null) {
+            timer.cancel();
+        }
+        if (tracker != null) {
+            tracker.close();
+        }
     }
 }

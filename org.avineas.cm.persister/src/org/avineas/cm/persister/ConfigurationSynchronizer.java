@@ -29,9 +29,10 @@ public interface ConfigurationSynchronizer {
      * the configuration admin service appears or disappears or at regular intervals to perform
      * a polling check on changed configurations. The method must synchronize the configuration
      * admin with the backed configurations.
-     * 
+     *
      * @param admin The configuration admin. May be null when no configuration admin is
      * present (yet)
+     * @throws IOException In case of configuration read/write errors
      */
     public void checkConfiguration(ConfigurationAdmin admin) throws IOException;
 }
