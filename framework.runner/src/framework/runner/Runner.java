@@ -1,6 +1,6 @@
 /*
  * Copyright 2015, aVineas IT Consulting
- * 
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -36,11 +36,11 @@ import org.osgi.framework.wiring.FrameworkWiring;
  * Runner for an OSGi framework. Conforms to the standard framework API and as such is independent of the OSGi framework
  * used. Is a main method that can be called with the following parameters:
  * <ul>
- * <li>-d directory. The directory to scan for .jar/.bar files. All jar/bar files in this directory are 
+ * <li>-d directory. The directory to scan for .jar/.bar files. All jar/bar files in this directory are
  * automatically handled as bundles.</li>
  * <li>-r directory (match). The directory to scan recursive for bundle files. The "match" argument indicates a regex expression
  * that is matched against the full path (defaults to .*[bj]ar$, meaning: all bar/jar files).
- * <li>-p property. An OSGi property that is set to the framework. Properties take the format key=value, 
+ * <li>-p property. An OSGi property that is set to the framework. Properties take the format key=value,
  * like "org.osgi.framework.bootdelegation=*".
  * </li>
  * </ul>
@@ -48,16 +48,16 @@ import org.osgi.framework.wiring.FrameworkWiring;
  */
 public class Runner {
 	private Framework framework;
-	
+
 	private Runner(Framework fw) {
-		this.framework = fw;
-	} 
-	
+		framework = fw;
+	}
+
 	private static void refresh(Framework framework, Collection<Bundle> bundles) {
 		FrameworkWiring wiring = framework.adapt(FrameworkWiring.class);
 		wiring.refreshBundles(bundles);
 	}
-	
+
 	/**
 	 * Wait for termination. This is either done by a kill-like command or otherwise interrupting the handling. As such
 	 * a shutdown hook is installed to make sure that any clean-up is done.
@@ -69,17 +69,19 @@ public class Runner {
 				handleTermination();
 			}
 		}));
-		long now = System.currentTimeMillis();
+		long now = System.currentTimeMillis() - checkTime;
 		try {
 			for (;;) {
 				FrameworkEvent event = framework.waitForStop(checkTime);
-				if (event.getType() != FrameworkEvent.WAIT_TIMEDOUT) break;
+				if (event.getType() != FrameworkEvent.WAIT_TIMEDOUT) {
+                    break;
+                }
 				// Check the bundles.
 				List<Bundle> updated = new ArrayList<>();
-				long lastUpdate = System.currentTimeMillis();
+				long lastUpdate = now;
 				for (Map.Entry<File, Bundle> entry : bundles.entrySet()) {
 					File f = entry.getKey();
-					if (f.lastModified() > now) {
+					if (f.lastModified() > lastUpdate && f.lastModified() <= now) {
 						Bundle b = entry.getValue();
 						b.update();
 						if (verbose > 0) {
@@ -90,7 +92,7 @@ public class Runner {
 				}
 				if (updated.size() > 0) {
 					refresh(framework, updated);
-					now = lastUpdate;
+					now = System.currentTimeMillis();
 				}
 			}
 		} catch (Exception exc) {
@@ -106,11 +108,11 @@ public class Runner {
 			System.exit(1);
 		}
 	}
-	
+
 	/**
 	 * Parse a directory (recursive) for files that may be a bundle. This implies that their extension must be .jar, the
 	 * directory must be readable and existing.
-	 * 
+	 *
 	 * @param dir The directory to parse (recursive). Doesn't need to exist.
 	 * @param files The list where the files are collected
 	 * @param recursive Indication whether to perform the update recursive
@@ -118,7 +120,9 @@ public class Runner {
 	private static void parseFiles(File dir, List<File> files, String match, boolean recursive) {
 		if (dir.exists() && dir.isDirectory() && dir.canRead()) {
 			File[] contents = dir.listFiles();
-			if (contents == null) return;
+			if (contents == null) {
+                return;
+            }
 			for (File f : contents) {
 				if (f.isDirectory()) {
 					if (recursive) {
@@ -131,10 +135,10 @@ public class Runner {
 			}
 		}
 	}
-	
+
 	/**
 	 * Main runner. See class description.
-	 * 
+	 *
 	 * @param args The arguments passed
 	 * @throws Exception In case of severe errors
 	 */
@@ -154,7 +158,7 @@ public class Runner {
 			if ("-p".equals(args[cnt])) {
 				String value = args[++cnt];
 				String[] values = value.split("=");
-				props.put(values[0].trim(), (values.length == 1 || values[1] == null) ? "" : values[1].trim());
+				props.put(values[0].trim(), values.length == 1 || values[1] == null ? "" : values[1].trim());
 			}
 			else if ("-d".equals(args[cnt]) || "-r".equals(args[cnt])) {
 				// Check the directory.
@@ -201,7 +205,7 @@ public class Runner {
 				}
 				else {
 					if (verbose > 1) {
-						System.out.println("File: " + file.getName() + ". Bundle: " + b.getSymbolicName() + ", version: " + 
+						System.out.println("File: " + file.getName() + ". Bundle: " + b.getSymbolicName() + ", version: " +
 								b.getVersion() + " installed. Bundle id: " + b.getBundleId());
 					}
 					bundles.put(file, b);
