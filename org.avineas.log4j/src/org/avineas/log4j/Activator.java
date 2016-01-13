@@ -50,6 +50,7 @@ public class Activator implements BundleActivator, ManagedService {
 	        path = "configuration/log4j.xml";
 	    }
 	    properties.put(FILE, path);
+	    updated(properties);
 	    registration = context.registerService(ManagedService.class.getName(),
 	        this, properties);
 	}
